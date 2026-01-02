@@ -13,14 +13,6 @@ import os
 # --- Настройка БД (С АВТО-ИСПРАВЛЕНИЕМ ОШИБКИ) ---
 DB_FILE = "notes.db"
 
-# Если старая база существует, удаляем её, чтобы SQLAlchemy создала новую с колонкой category
-if os.path.exists(DB_FILE):
-    try:
-        os.remove(DB_FILE)
-        print("--- СТАРАЯ БАЗА УДАЛЕНА. СОЗДАЕМ НОВУЮ С КОЛОНКОЙ CATEGORY ---")
-    except Exception as e:
-        print(f"--- НЕ УДАЛОСЬ УДАЛИТЬ БАЗУ: {e} ---")
-
 SQLALCHEMY_DATABASE_URL = f"sqlite:///./{DB_FILE}"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
