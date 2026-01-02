@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 import io
 
-# --- БД ---
+# --- Настройка БД ---
 SQLALCHEMY_DATABASE_URL = "sqlite:///./notes.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -20,12 +20,12 @@ class NoteDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     content = Column(Text)
-    category = Column(String, default="Разное") # Добавили колонку категории
+    category = Column(String, default="Разное")
     created_at = Column(String, default=lambda: datetime.now().strftime("%d.%m %H:%M"))
 
 Base.metadata.create_all(bind=engine)
 
-# --- APP ---
+# --- Приложение ---
 app = FastAPI()
 
 app.add_middleware(
@@ -35,11 +35,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Схемы данных
 class NoteCreate(BaseModel):
     title: str
     content: str
-    category: Optional[str] = "Разное" # Добавили в схему
+    category: Optional[str] = "Разное"
 
 class NoteResponse(NoteCreate):
     id: int
@@ -52,7 +51,11 @@ def get_db():
     try: yield db
     finally: db.close()
 
-# --- МАРШРУТЫ ---
+# --- Маршруты ---
+
+@app.get("/")
+def home():
+    return {"status": "Online", "msg": "API is working. Use /notes/ or /export"}
 
 @app.get("/notes/", response_model=List[NoteResponse])
 def get_notes(db: Session = Depends(get_db)):
@@ -60,7 +63,6 @@ def get_notes(db: Session = Depends(get_db)):
 
 @app.post("/notes/", response_model=NoteResponse)
 def create_note(note: NoteCreate, db: Session = Depends(get_db)):
-    # Теперь сохраняем и категорию тоже
     new_note = NoteDB(title=note.title, content=note.content, category=note.category)
     db.add(new_note)
     db.commit()
@@ -75,23 +77,14 @@ def delete_note(note_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "deleted"}
 
-# НОВЫЙ МАРШРУТ: Экспорт в TXT
 @app.get("/export")
 def export_notes(db: Session = Depends(get_db)):
     notes = db.query(NoteDB).all()
-    
-    # Формируем текстовое содержимое
-    report = "=== МОИ ЗАМЕТКИ (BACKUP) ===\n\n"
+    report = "=== MY DASHBOARD BACKUP ===\n\n"
     for n in notes:
-        report += f"Дата: {n.created_at} | Категория: {n.category}\n"
-        report += f"Заголовок: {n.title}\n"
-        report += f"Текст: {n.content}\n"
-        report += "-"*30 + "\n\n"
+        report += f"[{n.created_at}] {n.category} | {n.title}\n{n.content}\n{'-'*30}\n"
     
-    # Отправляем как файл для скачивания
-    file_stream = io.BytesIO(report.encode("utf-8"))
     return StreamingResponse(
-        file_stream,
+        io.BytesIO(report.encode("utf-8")),
         media_type="text/plain",
         headers={"Content-Disposition": "attachment; filename=notes_backup.txt"}
-    )
