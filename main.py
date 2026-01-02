@@ -9,7 +9,16 @@ from typing import List, Optional
 from datetime import datetime
 import io
 
-# --- Настройка БД ---
+# --- Настройка БД (С САМООЧИСТКОЙ) ---
+import os
+# Если старая база мешает, удаляем её перед запуском
+if os.path.exists("notes.db"):
+    try:
+        os.remove("notes.db")
+        print("--- СУПЕР: СТАРАЯ БАЗА УДАЛЕНА УСПЕШНО ---")
+    except Exception as e:
+        print(f"--- ОШИБКА УДАЛЕНИЯ: {e} ---")
+
 SQLALCHEMY_DATABASE_URL = "sqlite:///./notes.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
