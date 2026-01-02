@@ -48,8 +48,10 @@ class NoteResponse(NoteCreate):
 
 def get_db():
     db = SessionLocal()
-    try: yield db
-    finally: db.close()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # --- Маршруты ---
 
@@ -72,7 +74,8 @@ def create_note(note: NoteCreate, db: Session = Depends(get_db)):
 @app.delete("/notes/{note_id}")
 def delete_note(note_id: int, db: Session = Depends(get_db)):
     note = db.query(NoteDB).filter(NoteDB.id == note_id).first()
-    if not note: raise HTTPException(status_code=404)
+    if not note: 
+        raise HTTPException(status_code=404)
     db.delete(note)
     db.commit()
     return {"status": "deleted"}
@@ -88,3 +91,4 @@ def export_notes(db: Session = Depends(get_db)):
         io.BytesIO(report.encode("utf-8")),
         media_type="text/plain",
         headers={"Content-Disposition": "attachment; filename=notes_backup.txt"}
+    )
