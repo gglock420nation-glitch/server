@@ -8,9 +8,20 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import io
+import os
 
-# --- Настройка БД ---
-SQLALCHEMY_DATABASE_URL = "sqlite:///./notes.db"
+# --- Настройка БД (С АВТО-ИСПРАВЛЕНИЕМ ОШИБКИ) ---
+DB_FILE = "notes.db"
+
+# Если старая база существует, удаляем её, чтобы SQLAlchemy создала новую с колонкой category
+if os.path.exists(DB_FILE):
+    try:
+        os.remove(DB_FILE)
+        print("--- СТАРАЯ БАЗА УДАЛЕНА. СОЗДАЕМ НОВУЮ С КОЛОНКОЙ CATEGORY ---")
+    except Exception as e:
+        print(f"--- НЕ УДАЛОСЬ УДАЛИТЬ БАЗУ: {e} ---")
+
+SQLALCHEMY_DATABASE_URL = f"sqlite:///./{DB_FILE}"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -23,8 +34,7 @@ class NoteDB(Base):
     category = Column(String, default="Разное")
     created_at = Column(String, default=lambda: datetime.now().strftime("%d.%m %H:%M"))
 
-# Эта строка создаст таблицу, только если её еще нет. 
-# Теперь, когда старая база удалена, она создаст правильную структуру.
+# Создаем новую структуру базы
 Base.metadata.create_all(bind=engine)
 
 # --- Приложение ---
