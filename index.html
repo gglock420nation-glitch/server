@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Dashboard | My Notes</title>
+    <style>
+        /* Основные переменные и фон */
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #3b82f6;
+            --text: #f8fafc;
+            --tag-work: #ef4444;
+            --tag-study: #10b981;
+            --tag-other: #64748b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        /* Шапка */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        #status {
+            font-size: 14px;
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        /* Редактор заметок */
+        .editor {
+            background: var(--card);
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid #334155;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        input, textarea, select {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .btn-main {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            font-size: 16px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .btn-main:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        /* Поиск */
+        .search-bar {
+            border: 2px solid var(--accent);
+            margin-bottom: 25px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>') no-repeat 15px center;
+            padding-left: 45px;
+        }
+
+        /* Карточки заметок */
+        .note-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            position: relative;
+            border-top: 4px solid var(--accent);
+            animation: slideUp 0.4s ease-out forwards;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .delete-ico {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: #f87171;
+            cursor: pointer;
+            font-size: 18px;
+            transition: color 0.2s;
+        }
+
+        .delete-ico:hover { color: #ef4444; }
+
+        /* Теги категорий */
+        .tag {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 800;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+        .tag-work { background: var(--tag-work); }
+        .tag-study { background: var(--tag-study); }
+        .tag-other { background: var(--tag-other); }
+
+        .note-date { font-size: 12px; color: #94a3b8; }
+
+        /* Стили для ссылок в тексте */
+        .note-content a {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        /* Анимации для уведомлений (Toast) */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🚀 My Dashboard</h1>
+        <div id="status">● Online</div>
+    </div>
+
+    <div class="editor">
+        <input type="text" id="title" placeholder="Заголовок записи...">
+        <textarea id="content" placeholder="Напишите что-нибудь... (ссылки станут кликабельными)" rows="3"></textarea>
+        <select id="category">
+            <option value="Разное">Разное</option>
+            <option value="Работа">Работа</option>
+            <option value="Учеба">Учеба</option>
+        </select>
+        <button class="btn-main" onclick="addNote()">Сохранить в базу</button>
+    </div>
+
+    <input type="text" id="search" class="search-bar" placeholder="Быстрый поиск по всем записям..." oninput="filter()">
+
+    <div id="notes-list"></div>
+
+    <script>
+        const API = "http://127.0.0.1:8000/notes/";
+        let allNotes = [];
+
+        // Всплывающие уведомления
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px;
+                background: ${isError ? '#ef4444' : '#10b981'};
+                color: white; padding: 12px 24px; border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000;
+                animation: slideInRight 0.3s ease; font-weight: bold;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Превращение ссылок в тексте в кликабельные
+        function linkify(text) {
+            const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+            return text.replace(urlPattern, '<a href="$1" target="_blank">$1</a>');
+        }
+
+        // Класс для тега
+        function getTagClass(cat) {
+            const c = String(cat).toLowerCase();
+            if (c === 'работа') return 'tag-work';
+            if (c === 'учеба') return 'tag-study';
+            return 'tag-other';
+        }
+
+        // Загрузка
+        async function load() {
+            try {
+                const r = await fetch(API);
+                allNotes = await r.json();
+                render(allNotes);
+                document.getElementById('status').textContent = "● Online";
+                document.getElementById('status').style.color = "#10b981";
+            } catch (e) {
+                document.getElementById('status').textContent = "● Offline";
+                document.getElementById('status').style.color = "#ef4444";
+            }
+        }
+
+        // Отрисовка
+        function render(notes) {
+            const list = document.getElementById('notes-list');
+            list.innerHTML = '';
+
+            if (notes.length === 0) {
+                list.innerHTML = `<p style="text-align:center; color:#94a3b8; margin-top:20px;">Записей не найдено</p>`;
+                return;
+            }
+
+            [...notes].reverse().forEach(n => {
+                const cat = n.category || 'Разное';
+                const contentHTML = linkify(n.content || '');
+                
+                list.innerHTML += `
+                    <div class="note-card">
+                        <span class="delete-ico" onclick="del(${n.id})">✖</span>
+                        <div class="tag ${getTagClass(cat)}">${cat}</div>
+                        <div class="note-date">${n.created_at || 'Недавно'}</div>
+                        <h3 style="margin: 8px 0;">${n.title}</h3>
+                        <p class="note-content" style="color: #cbd5e1; white-space: pre-wrap;">${contentHTML}</p>
+                    </div>
+                `;
+            });
+        }
+
+        // Добавление
+        async function addNote() {
+            const t = document.getElementById('title');
+            const c = document.getElementById('content');
+            const cat = document.getElementById('category');
+
+            if (!t.value.trim()) {
+                showToast("Введите заголовок!", true);
+                return;
+            }
+
+            await fetch(API, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({title: t.value, content: c.value, category: cat.value})
+            });
+
+            t.value = '';
+            c.value = '';
+            showToast("✅ Заметка сохранена");
+            load();
+        }
+
+        // Удаление
+        async function del(id) {
+            if (confirm("Удалить эту запись?")) {
+                await fetch(API + id, {method: 'DELETE'});
+                showToast("🗑️ Удалено");
+                load();
+            }
+        }
+
+        // Поиск
+        function filter() {
+            const q = document.getElementById('search').value.toLowerCase();
+            const filtered = allNotes.filter(n => 
+                n.title.toLowerCase().includes(q) || 
+                n.content.toLowerCase().includes(q) ||
+                n.category.toLowerCase().includes(q)
+            );
+            render(filtered);
+        }
+
+        // Старт
+        window.onload = load;
+    </script>
+</body>
+</html>
