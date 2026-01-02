@@ -9,16 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 import io
 
-# --- Настройка БД (С САМООЧИСТКОЙ) ---
-import os
-# Если старая база мешает, удаляем её перед запуском
-if os.path.exists("notes.db"):
-    try:
-        os.remove("notes.db")
-        print("--- СУПЕР: СТАРАЯ БАЗА УДАЛЕНА УСПЕШНО ---")
-    except Exception as e:
-        print(f"--- ОШИБКА УДАЛЕНИЯ: {e} ---")
-
+# --- Настройка БД ---
 SQLALCHEMY_DATABASE_URL = "sqlite:///./notes.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -32,6 +23,8 @@ class NoteDB(Base):
     category = Column(String, default="Разное")
     created_at = Column(String, default=lambda: datetime.now().strftime("%d.%m %H:%M"))
 
+# Эта строка создаст таблицу, только если её еще нет. 
+# Теперь, когда старая база удалена, она создаст правильную структуру.
 Base.metadata.create_all(bind=engine)
 
 # --- Приложение ---
